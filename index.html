@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Our Moment | 도희 & 동민</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;500;700&display=swap');
+
+        :root {
+            --accent-color: #ff8a80;
+            --bg-color: #ffffff;
+            --card-bg: #f9f9f9;
+            --text-main: #222222;
+            --text-sub: #999999;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            min-height: 100vh;
+            padding: 50px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Typography & Intro */
+        .header { margin-bottom: 30px; text-align: center;}
+        .header h1 { font-size: 30px; font-weight: 700; margin: 0; letter-spacing: -1px; }
+        .header p { font-size: 15px; color: var(--text-sub); margin-top: 8px; font-weight: 300; }
+
+        /* Form Elements */
+        input[type="text"] {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #eee;
+            border-radius: 14px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            background: var(--card-bg);
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--accent-color); outline: none; background: #fff; }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-main { background: var(--accent-color); color: white; box-shadow: 0 6px 12px rgba(255, 138, 128, 0.2); }
+        .btn-sub { background: var(--card-bg); color: var(--text-main); margin-top: 10px; border: 1px solid #eee; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        .btn:disabled { background: #eee; color: #ccc; cursor: not-allowed; box-shadow: none; }
+
+        /* Main Sections */
+        .section { margin-top: 40px; }
+        .section-label { font-size: 12px; color: var(--accent-color); font-weight: 700; text-transform: uppercase; margin-bottom: 10px; display: block; opacity: 0.8;}
+        
+        .game-box {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+        #scoreNum { font-size: 40px; font-weight: 700; margin: 5px 0; color: var(--text-main); }
+        .high-score { font-size: 13px; color: var(--text-sub); margin-top: 10px;}
+
+        /* Photo Status */
+        #photoCount { font-size: 14px; color: var(--text-sub); text-align: center; margin-top: 8px;}
+        #uploadStatus { font-size: 12px; text-align: center; margin-top: 8px; color: var(--accent-color); min-height: 1.2em;}
+
+        /* Modal (Full Screen Content) */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; display: none;
+            flex-direction: column; z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;}
+        .modal-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
+        .modal-img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 25px; background: #000; }
+        .modal-text { font-size: 18px; font-weight: 300; line-height: 1.5; color: var(--text-main); }
+
+        .hidden { display: none !important; }
+        
+        /* Loading Spinner */
+        .spinner { border: 2px solid #f3f3f3; border-top: 2px solid var(--accent-color); border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div id="loginSection">
+            <div class="header">
+                <h1>Our Moment</h1>
+                <p>도희 ❤️ 동민 추억 저장소</p>
+            </div>
+            <input type="text" id="userName" placeholder="누구신가요? (도희/동민)" spellcheck="false">
+            <button class="btn btn-main" onclick="login()">입장하기</button>
+        </div>
+
+        <div id="mainSection" class="hidden">
+            <div class="header">
+                <h1 id="welcomeTitle">Hello</h1>
+                <p>서로의 추억을 실시간으로 공유해요.</p>
+            </div>
+
+            <div class="section">
+                <span class="section-label">Mini Game</span>
+                <div class="game-box">
+                    <div id="scoreNum">0</div>
+                    <button class="btn btn-main" id="gameBtn" onclick="startGame()">터치 시작</button>
+                    <p class="high-score" id="highScore">기록 불러오는 중...</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <span class="section-label">Shared Memories</span>
+                
+                <button class="btn btn-sub" id="uploadBtn" onclick="triggerUpload()">
+                    <div class="spinner" id="uploadSpinner"></div>
+                    <span id="uploadBtnText">📸 우리의 사진 추가하기</span>
+                </button>
+                <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+                <p id="uploadStatus"></p>
+                
+                <div style="margin-top: 25px;">
+                    <button id="randomBtn" class="btn btn-main hidden" onclick="showRandomPhoto()" style="background: #333;">✨ 랜덤 추억 소환 (0)</button>
+                    <p id="photoCount">공유된 사진을 불러오는 중...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="photoModal" class="modal">
+        <div class="modal-close" onclick="closeModal()">✕</div>
+        <div class="modal-content">
+            <img id="randomPhoto" class="modal-img" src="">
+            <div class="modal-text">
+                이 순간, 기억나나요?<br>
+                <span style="color: var(--accent-color); font-weight: 700;">서로에게 이 날의 이야기를 해주세요.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase 설정 (!!!반드시 본인의 정보로 교체하세요!!!)
+    apiKey: "AIzaSyAkRnDQnRbtgN1PzBkZ1cbHa8fqchQ6zrQ",
+  authDomain: "dohee-dongmin.firebaseapp.com",
+  databaseURL: "https://dohee-dongmin-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dohee-dongmin",
+  storageBucket: "dohee-dongmin.firebasestorage.app",
+  messagingSenderId: "918584489743",
+  appId: "1:918584489743:web:98e8c2d62e2e0ce40e307a",
+  measurementId: "G-HMWH64E45M"
+        };
+
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const storage = firebase.storage();
+
+        let currentUser = "";
+        let allSharedPhotos = []; // 데이터베이스에서 불러온 모든 사진 URL
+        let score = 0;
+        let isPlaying = false;
+
+        // 페이지 로드 시 파일 입력 이벤트 리스너 등록 (안정성 강화)
+        window.onload = function() {
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+                handleFiles(e.target.files);
+            });
+        };
+
+        // 1. 로그인 및 초기 데이터 로딩
+        function login() {
+            const name = document.getElementById('userName').value;
+            if (!name.trim()) return alert("이름을 입력해주세요!");
+            currentUser = name.trim();
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+            document.getElementById('welcomeTitle').innerText = `${currentUser}의 기록`;
+            
+            // 실시간 데이터 로드 시작
+            loadHighScore();
+            loadSharedPhotos(); 
+        }
+
+        // 2. 게임 및 데이터베이스 저장 (실시간 반영)
+        function startGame() {
+            if (isPlaying) {
+                score++;
+                document.getElementById('scoreNum').innerText = score;
+                return;
+            }
+            isPlaying = true;
+            score = 0;
+            document.getElementById('scoreNum').innerText = score;
+            document.getElementById('gameBtn').innerText = "빨리 터치!!";
+            
+            setTimeout(() => {
+                isPlaying = false;
+                document.getElementById('gameBtn').innerText = "다시 하기";
+                saveScore(score);
+            }, 5000); 
+        }
+
+        function saveScore(finalScore) {
+            database.ref('scores/' + currentUser).set({
+                score: finalScore,
+                date: new Date().toLocaleString()
+            });
+        }
+
+        function loadHighScore() {
+            database.ref('scores').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const board = Object.entries(data)
+                        .map(([name, obj]) => `${name}: ${obj.score}`)
+                        .join(' | ');
+                    document.getElementById('highScore').innerText = "🏆 기록: " + board;
+                } else {
+                    document.getElementById('highScore').innerText = "아직 기록이 없습니다.";
+                }
+            });
+        }
+
+        // --- 핵심 수정: 사진 업로드 및 DB 공유 ---
+
+        function triggerUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            const status = document.getElementById('uploadStatus');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const spinner = document.getElementById('uploadSpinner');
+            const btnText = document.getElementById('uploadBtnText');
+
+            // 업로드 상태 UI 적용
+            status.innerText = "사진을 서버에 저장 중입니다...";
+            uploadBtn.disabled = true;
+            spinner.style.display = "inline-block";
+            btnText.innerText = "업로드 중...";
+
+            let successCount = 0;
+
+            for (let file of files) {
+                try {
+                    // 1. Storage에 파일 업로드
+                    const filename = `${Date.now()}_${currentUser}_${file.name}`;
+                    const storageRef = storage.ref(`photos/${filename}`);
+                    const snapshot = await storageRef.put(file);
+                    
+                    // 2. 업로드된 파일의 다운로드 URL 가져오기
+                    const downloadURL = await snapshot.ref.getDownloadURL();
+                    
+                    // 3. !!!중요!!! Realtime Database에 URL 저장 (서로 공유됨)
+                    await database.ref('shared_photos').push({
+                        url: downloadURL,
+                        uploader: currentUser,
+                        date: new Date().toISOString()
+                    });
+                    
+                    successCount++;
+                } catch (error) {
+                    console.error("업로드 오류:", error);
+                }
+            }
+
+            // UI 원복
+            status.innerText = `${successCount}개의 추억을 공유했습니다! ✨`;
+            uploadBtn.disabled = false;
+            spinner.style.display = "none";
+            btnText.innerText = "📸 우리의 사진 추가하기";
+            document.getElementById('fileInput').value = ""; // 파일 입력 초기화
+        }
+
+        // --- 핵심 수정: 공유된 사진 실시간 로드 ---
+
+        function loadSharedPhotos() {
+            // shared_photos 노드를 실시간 감시
+            database.ref('shared_photos').on('value', (snapshot) => {
+                const data = snapshot.val();
+                allSharedPhotos = []; // 배열 초기화
+
+                if (data) {
+                    // DB의 데이터를 배열로 변환
+                    Object.values(data).forEach(photoObj => {
+                        allSharedPhotos.push(photoObj.url);
+                    });
+                }
+
+                updatePhotoUI();
+            });
+        }
+
+        function updatePhotoUI() {
+            const count = allSharedPhotos.length;
+            const randomBtn = document.getElementById('randomBtn');
+            const countText = document.getElementById('photoCount');
+
+            countText.innerText = `현재 ${count}개의 추억이 공유되었습니다.`;
+            randomBtn.innerText = `✨ 랜덤 추억 소환 (${count})`;
+
+            // 사진이 1개 이상이면 랜덤 버튼 활성화 (혼자 올려도 작동하게 변경)
+            if (count > 0) {
+                randomBtn.classList.remove('hidden');
+            } else {
+                randomBtn.classList.add('hidden');
+            }
+        }
+
+        // 7. 랜덤 사진 창 띄우기
+        function showRandomPhoto() {
+            if (allSharedPhotos.length === 0) return;
+            
+            const randomIdx = Math.floor(Math.random() * allSharedPhotos.length);
+            const selectedUrl = allSharedPhotos[randomIdx];
+            
+            // 이미지 프리로딩 (로딩 완료 후 모달 표시)
+            const img = new Image();
+            img.src = selectedUrl;
+            document.getElementById('uploadStatus').innerText = "추억 소환 중...";
+
+            img.onload = function() {
+                document.getElementById('randomPhoto').src = selectedUrl;
+                document.getElementById('photoModal').style.display = 'flex';
+                document.getElementById('uploadStatus').innerText = "";
+            };
+            
+            img.onerror = function() {
+                alert("이미지를 불러오는데 실패했습니다.");
+                document.getElementById('uploadStatus').innerText = "";
+            };
+        }
+
+        function closeModal() {
+            document.getElementById('photoModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
